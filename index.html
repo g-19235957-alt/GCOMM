@@ -41,7 +41,7 @@
 
   <!-- HEADER -->
   <header class="text-white" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);">
-    <div class="max-w-6xl mx-auto px-4 py-8 flex items-center justify-between gap-4">
+    <div class="max-w-7xl mx-auto px-4 py-8 flex items-center justify-between gap-4">
       <div class="flex items-center gap-4 min-w-0">
         <img id="catLogo" class="hidden h-12 w-12 object-contain rounded-lg bg-white p-1.5" alt="">
         <div class="min-w-0">
@@ -60,16 +60,20 @@
   </header>
 
   <!-- MAIN -->
-  <main class="max-w-6xl mx-auto px-4 py-8">
+  <main class="max-w-7xl mx-auto px-4 py-8">
     <!-- HERO -->
-    <div id="heroBanner" class="hidden rounded-3xl overflow-hidden mb-8 relative" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#1f2a4a 100%);">
-      <div class="absolute top-0 right-0 w-64 h-64 rounded-full" style="background:radial-gradient(circle,rgba(184,148,95,0.25),transparent 70%);"></div>
-      <div class="relative px-8 py-12 sm:py-16 text-white text-center">
-        <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 text-xs uppercase tracking-widest mb-5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i>Welcome</span>
-        <h2 id="heroTitle" class="display text-3xl sm:text-5xl font-bold leading-tight"></h2>
-        <p id="heroTagline" class="text-slate-300 mt-4 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed"></p>
-        <p id="heroThanks" class="text-[#d4af7a] mt-3 text-sm sm:text-base italic"></p>
-        <button onclick="document.getElementById('shopStart').scrollIntoView({behavior:'smooth'})" class="mt-7 bg-white text-slate-900 hover:bg-slate-100 rounded-full px-7 py-3 font-semibold text-sm transition inline-flex items-center gap-2">Browse Products <i data-lucide="arrow-down" class="w-4 h-4"></i></button>
+    <div id="heroBanner" class="hidden rounded-2xl overflow-hidden mb-8 relative" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#1f2a4a 100%);">
+      <div class="absolute top-0 right-0 w-48 h-48 rounded-full" style="background:radial-gradient(circle,rgba(184,148,95,0.22),transparent 70%);"></div>
+      <div class="relative px-6 sm:px-8 py-7 text-white">
+        <div class="flex items-center gap-4">
+          <img id="heroLogo" class="hidden h-14 w-14 sm:h-16 sm:w-16 object-contain rounded-xl bg-white p-2 flex-shrink-0" alt="">
+          <div class="min-w-0">
+            <h2 id="heroTitle" class="display text-2xl sm:text-3xl font-bold leading-tight"></h2>
+            <p id="heroTagline" class="text-slate-300 mt-1 text-xs sm:text-sm leading-relaxed"></p>
+          </div>
+        </div>
+        <p id="heroThanks" class="text-[#d4af7a] mt-3 text-xs sm:text-sm italic"></p>
+        <button onclick="document.getElementById('shopStart').scrollIntoView({behavior:'smooth'})" class="mt-4 bg-white text-slate-900 hover:bg-slate-100 rounded-full px-5 py-2 font-semibold text-xs sm:text-sm transition inline-flex items-center gap-2">Browse Products <i data-lucide="arrow-down" class="w-4 h-4"></i></button>
       </div>
     </div>
 
@@ -87,7 +91,7 @@
 
   <!-- COMPANY FOOTER -->
   <footer id="catFooter" class="hidden text-white mt-12" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);">
-    <div class="max-w-6xl mx-auto px-4 py-10">
+    <div class="max-w-7xl mx-auto px-4 py-10">
       <div class="flex items-center gap-2 mb-6"><span class="h-0.5 w-10 accent-line rounded-full"></span><span class="text-xs uppercase tracking-widest text-slate-300">Get in touch</span></div>
       <div id="footerContent" class="grid grid-cols-1 sm:grid-cols-2 gap-8"></div>
       <div class="border-t border-white/10 mt-8 pt-6 text-center text-xs text-slate-400"><span id="footerCopyright"></span></div>
@@ -160,6 +164,7 @@
     document.getElementById('heroTitle').textContent = name;
     document.getElementById('heroTagline').textContent = 'Your trusted partner for quality products and dependable service.';
     document.getElementById('heroThanks').textContent = '“Thank you for choosing us — every order you place means the world to our team.”';
+    if (logo){ const hl = document.getElementById('heroLogo'); hl.src = logo; hl.classList.remove('hidden'); hl.onerror = ()=>hl.classList.add('hidden'); }
     document.getElementById('heroBanner').classList.remove('hidden');
 
     // Floating WhatsApp from company phone
@@ -205,6 +210,22 @@
       if (catSort === 'price_high') return (b.price||0) - (a.price||0);
       return a.name.localeCompare(b.name);
     });
+    const available = visible.filter(p => (p.quantity||0) > 0);
+    const soldOut = visible.filter(p => (p.quantity||0) <= 0);
+    const gridOpen = '<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">';
+    let body;
+    if (visible.length === 0){
+      body = '<div class="text-center py-16 text-slate-400">No products match your search.</div>';
+    } else {
+      body = '';
+      if (available.length) body += gridOpen + available.map(renderProductCard).join('') + '</div>';
+      else body += '<div class="text-center py-10 text-slate-400">No items currently in stock.</div>';
+      if (soldOut.length){
+        body += `<div class="mt-12 pt-8 border-t border-slate-200">
+          <div class="flex items-center gap-2 mb-5"><span class="h-0.5 w-8 rounded-full bg-rose-300"></span><h3 class="display text-lg font-bold text-slate-700">Currently Sold Out</h3><span class="text-xs text-slate-400">— backorder still welcome</span></div>
+          ${gridOpen}${soldOut.map(renderProductCard).join('')}</div></div>`;
+      }
+    }
     area.innerHTML = `
       <div class="flex flex-col sm:flex-row gap-3 mb-6">
         <div class="flex-1 relative">
@@ -221,7 +242,7 @@
         <button onclick="setCategory('all')" class="px-5 py-2 rounded-full font-semibold text-sm transition ${activeCategory==='all'?'text-white shadow-md':'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}" ${activeCategory==='all'?'style="background:linear-gradient(135deg,#1a1a2e,#16213e);"':''}>All Products</button>
         ${categories.map(c => `<button onclick="setCategory('${c.replace(/'/g,"\\'")}')" class="px-5 py-2 rounded-full font-semibold text-sm transition ${activeCategory===c?'text-white shadow-md':'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}" ${activeCategory===c?'style="background:linear-gradient(135deg,#1a1a2e,#16213e);"':''}>${c}</button>`).join('')}
       </div>
-      ${visible.length === 0 ? '<div class="text-center py-16 text-slate-400">No products match your search.</div>' : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">${visible.map(renderProductCard).join('')}</div>`}`;
+      ${body}`;
     lucide.createIcons();
   }
   function updateCatSearch(v){ catSearch = v; renderCatalogue(); }
@@ -230,21 +251,21 @@
   function renderProductCard(p){
     const soldOut = (p.quantity || 0) <= 0;
     return `<div class="card-hover bg-white rounded-2xl overflow-hidden flex flex-col" style="box-shadow:0 4px 20px -8px rgba(0,0,0,0.1);">
-      <div class="relative h-52 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden cursor-pointer group" onclick="openProductModal('${p.__backendId}')">
+      <div class="relative h-40 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden cursor-pointer group" onclick="openProductModal('${p.__backendId}')">
         ${p.product_photo ? `<img src="${p.product_photo}" alt="${p.name}" class="img-zoom w-full h-full object-cover" onerror="this.style.display='none'">` : `<i data-lucide="package" class="w-14 h-14 text-slate-300"></i>`}
         ${soldOut ? `<div class="absolute top-3 left-3"><span class="bg-rose-600 text-white px-3 py-1 rounded-full font-semibold text-xs tracking-wide shadow">SOLD OUT</span></div>` : ''}
         <div class="absolute bottom-3 right-3 bg-white/90 backdrop-blur rounded-full w-9 h-9 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md"><i data-lucide="maximize-2" class="w-4 h-4 text-slate-700"></i></div>
       </div>
-      <div class="p-5 flex-1 flex flex-col">
-        ${p.category ? `<span class="text-[10px] font-bold text-[#b8945f] uppercase tracking-[0.15em] mb-1.5">${p.category}</span>` : ''}
-        <h3 class="display text-lg font-bold text-slate-900 leading-snug cursor-pointer hover:text-[#b8945f] transition" onclick="openProductModal('${p.__backendId}')">${p.name}</h3>
-        ${p.description ? `<p class="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">${p.description}</p>` : ''}
-        <div class="mt-auto pt-4">
-          <div class="flex items-end justify-between mb-3">
-            <span class="text-xl font-bold text-slate-900">${formatCurrency(p.price)}</span>
-            <span class="text-xs ${soldOut?'text-rose-500 font-semibold':'text-slate-400'}">${soldOut?'Backorder available':p.quantity+' available'}</span>
+      <div class="p-4 flex-1 flex flex-col">
+        ${p.category ? `<span class="text-[10px] font-bold text-[#b8945f] uppercase tracking-[0.12em] mb-1">${p.category}</span>` : ''}
+        <h3 class="display text-base font-bold text-slate-900 leading-snug cursor-pointer hover:text-[#b8945f] transition" onclick="openProductModal('${p.__backendId}')">${p.name}</h3>
+        ${p.description ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">${p.description}</p>` : ''}
+        <div class="mt-auto pt-3">
+          <div class="flex items-end justify-between mb-2.5">
+            <span class="text-lg font-bold text-slate-900">${formatCurrency(p.price)}</span>
+            <span class="text-[11px] ${soldOut?'text-rose-500 font-semibold':'text-slate-400'}">${soldOut?'Backorder':p.quantity+' left'}</span>
           </div>
-          <button onclick="addToCart('${p.__backendId}')" class="w-full text-white hover:opacity-90 rounded-xl py-2.5 text-sm font-semibold transition flex items-center justify-center gap-2" style="background:linear-gradient(135deg,${soldOut?'#9a7b4f,#b8945f':'#1a1a2e,#16213e'});"><i data-lucide="${soldOut?'clock':'plus'}" class="w-4 h-4"></i>${soldOut?'Backorder':'Add to Order'}</button>
+          <button onclick="addToCart('${p.__backendId}')" class="w-full text-white hover:opacity-90 rounded-lg py-2 text-xs font-semibold transition flex items-center justify-center gap-1.5" style="background:linear-gradient(135deg,${soldOut?'#9a7b4f,#b8945f':'#1a1a2e,#16213e'});"><i data-lucide="${soldOut?'clock':'plus'}" class="w-3.5 h-3.5"></i>${soldOut?'Backorder':'Add to Order'}</button>
         </div>
       </div>
     </div>`;
