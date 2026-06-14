@@ -61,6 +61,27 @@
 
   <!-- MAIN -->
   <main class="max-w-6xl mx-auto px-4 py-8">
+    <!-- HERO -->
+    <div id="heroBanner" class="hidden rounded-3xl overflow-hidden mb-8 relative" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#1f2a4a 100%);">
+      <div class="absolute top-0 right-0 w-64 h-64 rounded-full" style="background:radial-gradient(circle,rgba(184,148,95,0.25),transparent 70%);"></div>
+      <div class="relative px-8 py-12 sm:py-16 text-white text-center">
+        <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 text-xs uppercase tracking-widest mb-5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i>Welcome</span>
+        <h2 id="heroTitle" class="display text-3xl sm:text-5xl font-bold leading-tight"></h2>
+        <p id="heroTagline" class="text-slate-300 mt-4 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed"></p>
+        <p id="heroThanks" class="text-[#d4af7a] mt-3 text-sm sm:text-base italic"></p>
+        <button onclick="document.getElementById('shopStart').scrollIntoView({behavior:'smooth'})" class="mt-7 bg-white text-slate-900 hover:bg-slate-100 rounded-full px-7 py-3 font-semibold text-sm transition inline-flex items-center gap-2">Browse Products <i data-lucide="arrow-down" class="w-4 h-4"></i></button>
+      </div>
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10">
+      <div class="bg-white rounded-xl border border-slate-100 p-4 text-center" style="box-shadow:0 4px 14px -8px rgba(0,0,0,0.08);"><div class="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center" style="background:#f3ede1;"><i data-lucide="search" class="w-5 h-5" style="color:#b8945f;"></i></div><p class="text-xs font-bold text-slate-800">1. Browse</p><p class="text-[11px] text-slate-500 mt-0.5">Explore our products</p></div>
+      <div class="bg-white rounded-xl border border-slate-100 p-4 text-center" style="box-shadow:0 4px 14px -8px rgba(0,0,0,0.08);"><div class="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center" style="background:#f3ede1;"><i data-lucide="shopping-bag" class="w-5 h-5" style="color:#b8945f;"></i></div><p class="text-xs font-bold text-slate-800">2. Order</p><p class="text-[11px] text-slate-500 mt-0.5">Submit your request</p></div>
+      <div class="bg-white rounded-xl border border-slate-100 p-4 text-center" style="box-shadow:0 4px 14px -8px rgba(0,0,0,0.08);"><div class="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center" style="background:#f3ede1;"><i data-lucide="phone-call" class="w-5 h-5" style="color:#b8945f;"></i></div><p class="text-xs font-bold text-slate-800">3. We Confirm</p><p class="text-[11px] text-slate-500 mt-0.5">We call to confirm</p></div>
+      <div class="bg-white rounded-xl border border-slate-100 p-4 text-center" style="box-shadow:0 4px 14px -8px rgba(0,0,0,0.08);"><div class="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center" style="background:#f3ede1;"><i data-lucide="truck" class="w-5 h-5" style="color:#b8945f;"></i></div><p class="text-xs font-bold text-slate-800">4. Deliver/Collect</p><p class="text-[11px] text-slate-500 mt-0.5">Get your items</p></div>
+    </div>
+
+    <div id="shopStart"></div>
     <div id="catalogueArea"><div class="text-center py-20 text-slate-400">Loading products…</div></div>
   </main>
 
@@ -92,12 +113,18 @@
     <div id="productModalInner" class="relative modal-pop bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col"></div>
   </div>
 
+  <!-- FLOATING WHATSAPP -->
+  <a id="whatsappBtn" href="#" target="_blank" rel="noopener" class="hidden fixed bottom-5 right-5 z-[110] flex items-center gap-2 text-white rounded-full pl-4 pr-5 py-3 font-semibold shadow-lg transition hover:scale-105" style="background:#25D366;">
+    <i data-lucide="message-circle" class="w-5 h-5"></i><span class="hidden sm:inline">Chat with us</span>
+  </a>
+
   <div id="toastContainer" class="fixed top-4 right-4 z-[300] flex flex-col gap-2"></div>
 
   <script>
   const SHEETS_URL_KEY = 'catalogue_sheets_url';
   let SHEET_URL = localStorage.getItem(SHEETS_URL_KEY) || '';
   let products = [], companyInfo = null, cart = [], activeCategory = 'all';
+  let catSearch = '', catSort = 'name';
 
   function showToast(msg, type='success'){
     const t = document.createElement('div');
@@ -128,6 +155,23 @@
     const logo = companyInfo?.company_logo;
     const img = document.getElementById('catLogo');
     if (logo){ img.src = logo; img.classList.remove('hidden'); img.onerror = ()=>img.classList.add('hidden'); }
+
+    // Hero banner
+    document.getElementById('heroTitle').textContent = name;
+    document.getElementById('heroTagline').textContent = 'Your trusted partner for quality products and dependable service.';
+    document.getElementById('heroThanks').textContent = '“Thank you for choosing us — every order you place means the world to our team.”';
+    document.getElementById('heroBanner').classList.remove('hidden');
+
+    // Floating WhatsApp from company phone
+    const phone = companyInfo?.company_phone || '';
+    let digits = phone.replace(/\D/g,'');
+    if (digits){
+      if (digits.startsWith('0')) digits = '60' + digits.slice(1); // Malaysian local -> intl
+      const msg = encodeURIComponent(`Hi ${name}, I'd like to ask about your products.`);
+      const wa = document.getElementById('whatsappBtn');
+      wa.href = `https://wa.me/${digits}?text=${msg}`;
+      wa.classList.remove('hidden');
+    }
     // Footer with company info & contacts
     const c = companyInfo;
     if (c && (c.company_name || c.company_address || c.company_phone || c.company_email)){
@@ -154,17 +198,34 @@
     const area = document.getElementById('catalogueArea');
     if (products.length === 0){ area.innerHTML = '<div class="text-center py-20 text-slate-400">No products available right now.</div>'; return; }
     const categories = [...new Set(products.map(p => p.category || 'Uncategorized'))];
-    const visible = activeCategory === 'all' ? products : products.filter(p => (p.category||'Uncategorized') === activeCategory);
+    let visible = activeCategory === 'all' ? [...products] : products.filter(p => (p.category||'Uncategorized') === activeCategory);
+    if (catSearch){ const q = catSearch.toLowerCase(); visible = visible.filter(p => p.name.toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q)); }
+    visible.sort((a,b) => {
+      if (catSort === 'price_low') return (a.price||0) - (b.price||0);
+      if (catSort === 'price_high') return (b.price||0) - (a.price||0);
+      return a.name.localeCompare(b.name);
+    });
     area.innerHTML = `
+      <div class="flex flex-col sm:flex-row gap-3 mb-6">
+        <div class="flex-1 relative">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400"></i>
+          <input type="search" value="${catSearch.replace(/"/g,'&quot;')}" oninput="updateCatSearch(this.value)" placeholder="Search products..." class="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-[#b8945f] focus:border-[#b8945f] outline-none">
+        </div>
+        <select onchange="updateCatSort(this.value)" class="bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#b8945f] outline-none">
+          <option value="name" ${catSort==='name'?'selected':''}>Sort: Name (A–Z)</option>
+          <option value="price_low" ${catSort==='price_low'?'selected':''}>Sort: Price (Low–High)</option>
+          <option value="price_high" ${catSort==='price_high'?'selected':''}>Sort: Price (High–Low)</option>
+        </select>
+      </div>
       <div class="mb-8 flex flex-wrap gap-2.5">
         <button onclick="setCategory('all')" class="px-5 py-2 rounded-full font-semibold text-sm transition ${activeCategory==='all'?'text-white shadow-md':'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}" ${activeCategory==='all'?'style="background:linear-gradient(135deg,#1a1a2e,#16213e);"':''}>All Products</button>
         ${categories.map(c => `<button onclick="setCategory('${c.replace(/'/g,"\\'")}')" class="px-5 py-2 rounded-full font-semibold text-sm transition ${activeCategory===c?'text-white shadow-md':'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}" ${activeCategory===c?'style="background:linear-gradient(135deg,#1a1a2e,#16213e);"':''}>${c}</button>`).join('')}
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        ${visible.map(renderProductCard).join('')}
-      </div>`;
+      ${visible.length === 0 ? '<div class="text-center py-16 text-slate-400">No products match your search.</div>' : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">${visible.map(renderProductCard).join('')}</div>`}`;
     lucide.createIcons();
   }
+  function updateCatSearch(v){ catSearch = v; renderCatalogue(); }
+  function updateCatSort(v){ catSort = v; renderCatalogue(); }
 
   function renderProductCard(p){
     const soldOut = (p.quantity || 0) <= 0;
@@ -262,7 +323,11 @@
     footer.innerHTML = `
       <div class="flex justify-between mb-3"><span class="font-semibold text-slate-700">Total</span><span class="font-bold text-lg text-blue-600">${formatCurrency(total)}</span></div>
       <button onclick="showOrderForm()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-3 font-semibold transition">Submit Order Request</button>
-      <p class="text-xs text-slate-400 text-center mt-2">No payment now. We'll contact you to confirm.</p>`;
+      <div class="mt-3 space-y-1.5">
+        <p class="flex items-center gap-2 text-xs text-slate-500"><i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-500"></i>No payment now — we confirm by phone first</p>
+        <p class="flex items-center gap-2 text-xs text-slate-500"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-500"></i>Your details are kept private</p>
+        <p class="flex items-center gap-2 text-xs text-slate-500"><i data-lucide="headphones" class="w-3.5 h-3.5 text-emerald-500"></i>Friendly support, real people</p>
+      </div>`;
     lucide.createIcons();
   }
   function changeQty(i, d){
