@@ -64,6 +64,15 @@
     <div id="catalogueArea"><div class="text-center py-20 text-slate-400">Loading products…</div></div>
   </main>
 
+  <!-- COMPANY FOOTER -->
+  <footer id="catFooter" class="hidden text-white mt-12" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);">
+    <div class="max-w-6xl mx-auto px-4 py-10">
+      <div class="flex items-center gap-2 mb-6"><span class="h-0.5 w-10 accent-line rounded-full"></span><span class="text-xs uppercase tracking-widest text-slate-300">Get in touch</span></div>
+      <div id="footerContent" class="grid grid-cols-1 sm:grid-cols-2 gap-8"></div>
+      <div class="border-t border-white/10 mt-8 pt-6 text-center text-xs text-slate-400"><span id="footerCopyright"></span></div>
+    </div>
+  </footer>
+
   <!-- CART DRAWER -->
   <div id="cartDrawer" class="hidden fixed inset-0 z-[120]">
     <div class="absolute inset-0 bg-black/50" onclick="closeCart()"></div>
@@ -119,6 +128,26 @@
     const logo = companyInfo?.company_logo;
     const img = document.getElementById('catLogo');
     if (logo){ img.src = logo; img.classList.remove('hidden'); img.onerror = ()=>img.classList.add('hidden'); }
+    // Footer with company info & contacts
+    const c = companyInfo;
+    if (c && (c.company_name || c.company_address || c.company_phone || c.company_email)){
+      const left = `
+        <div>
+          ${c.company_logo ? `<img src="${c.company_logo}" class="h-12 mb-3 object-contain" onerror="this.style.display='none'">` : ''}
+          <h3 class="display text-xl font-bold mb-2">${c.company_name || ''}</h3>
+          ${c.company_address ? `<p class="text-sm text-slate-300 leading-relaxed whitespace-pre-line">${c.company_address}</p>` : ''}
+          ${c.company_reg ? `<p class="text-xs text-slate-400 mt-2">Reg: ${c.company_reg}</p>` : ''}
+        </div>`;
+      const contacts = [];
+      if (c.company_phone) contacts.push(`<a href="tel:${c.company_phone.replace(/\s/g,'')}" class="flex items-center gap-3 text-slate-200 hover:text-white transition"><span class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0"><i data-lucide="phone" class="w-4 h-4"></i></span><span class="text-sm">${c.company_phone}</span></a>`);
+      if (c.company_email) contacts.push(`<a href="mailto:${c.company_email}" class="flex items-center gap-3 text-slate-200 hover:text-white transition"><span class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0"><i data-lucide="mail" class="w-4 h-4"></i></span><span class="text-sm">${c.company_email}</span></a>`);
+      if (c.company_address) contacts.push(`<div class="flex items-start gap-3 text-slate-200"><span class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0"><i data-lucide="map-pin" class="w-4 h-4"></i></span><span class="text-sm leading-relaxed whitespace-pre-line">${c.company_address}</span></div>`);
+      const right = `<div><p class="text-xs uppercase tracking-wider text-slate-400 mb-3 font-semibold">Contact Us</p><div class="space-y-3">${contacts.join('')}</div></div>`;
+      document.getElementById('footerContent').innerHTML = left + right;
+      document.getElementById('footerCopyright').textContent = `© ${new Date().getFullYear()} ${c.company_name || ''}. All rights reserved.`;
+      document.getElementById('catFooter').classList.remove('hidden');
+      lucide.createIcons();
+    }
   }
 
   function renderCatalogue(){
@@ -142,7 +171,8 @@
     return `<div class="card-hover bg-white rounded-2xl overflow-hidden flex flex-col" style="box-shadow:0 4px 20px -8px rgba(0,0,0,0.1);">
       <div class="relative h-52 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden cursor-pointer group" onclick="openProductModal('${p.__backendId}')">
         ${p.product_photo ? `<img src="${p.product_photo}" alt="${p.name}" class="img-zoom w-full h-full object-cover" onerror="this.style.display='none'">` : `<i data-lucide="package" class="w-14 h-14 text-slate-300"></i>`}
-        ${soldOut ? `<div class="absolute inset-0 bg-black/55 flex items-center justify-center"><span class="bg-rose-600 text-white px-4 py-1.5 rounded-full font-semibold text-sm tracking-wide">SOLD OUT</span></div>` : `<div class="absolute bottom-3 right-3 bg-white/90 backdrop-blur rounded-full w-9 h-9 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md"><i data-lucide="maximize-2" class="w-4 h-4 text-slate-700"></i></div>`}
+        ${soldOut ? `<div class="absolute top-3 left-3"><span class="bg-rose-600 text-white px-3 py-1 rounded-full font-semibold text-xs tracking-wide shadow">SOLD OUT</span></div>` : ''}
+        <div class="absolute bottom-3 right-3 bg-white/90 backdrop-blur rounded-full w-9 h-9 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md"><i data-lucide="maximize-2" class="w-4 h-4 text-slate-700"></i></div>
       </div>
       <div class="p-5 flex-1 flex flex-col">
         ${p.category ? `<span class="text-[10px] font-bold text-[#b8945f] uppercase tracking-[0.15em] mb-1.5">${p.category}</span>` : ''}
@@ -151,9 +181,9 @@
         <div class="mt-auto pt-4">
           <div class="flex items-end justify-between mb-3">
             <span class="text-xl font-bold text-slate-900">${formatCurrency(p.price)}</span>
-            <span class="text-xs ${soldOut?'text-rose-500 font-semibold':'text-slate-400'}">${soldOut?'Out of stock':p.quantity+' available'}</span>
+            <span class="text-xs ${soldOut?'text-rose-500 font-semibold':'text-slate-400'}">${soldOut?'Backorder available':p.quantity+' available'}</span>
           </div>
-          <button ${soldOut?'disabled':''} onclick="addToCart('${p.__backendId}')" class="w-full ${soldOut?'bg-slate-100 text-slate-400 cursor-not-allowed':'text-white hover:opacity-90'} rounded-xl py-2.5 text-sm font-semibold transition flex items-center justify-center gap-2" ${soldOut?'':'style="background:linear-gradient(135deg,#1a1a2e,#16213e);"'}><i data-lucide="${soldOut?'x':'plus'}" class="w-4 h-4"></i>${soldOut?'Unavailable':'Add to Order'}</button>
+          <button onclick="addToCart('${p.__backendId}')" class="w-full text-white hover:opacity-90 rounded-xl py-2.5 text-sm font-semibold transition flex items-center justify-center gap-2" style="background:linear-gradient(135deg,${soldOut?'#9a7b4f,#b8945f':'#1a1a2e,#16213e'});"><i data-lucide="${soldOut?'clock':'plus'}" class="w-4 h-4"></i>${soldOut?'Backorder':'Add to Order'}</button>
         </div>
       </div>
     </div>`;
@@ -173,11 +203,11 @@
         <h2 class="display text-2xl font-bold text-slate-900 mt-1">${p.name}</h2>
         <div class="flex items-center gap-3 mt-2 mb-4">
           <span class="text-2xl font-bold text-slate-900">${formatCurrency(p.price)}</span>
-          <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${soldOut?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700'}">${soldOut?'Sold out':p.quantity+' in stock'}</span>
+          <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${soldOut?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700'}">${soldOut?'Sold out — backorder available':p.quantity+' in stock'}</span>
         </div>
         ${p.description ? `<div class="border-t pt-4"><p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Description</p><p class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">${p.description}</p></div>` : '<p class="text-sm text-slate-400 italic">No description available.</p>'}
         ${p.sku ? `<p class="text-xs text-slate-400 mt-4">SKU: ${p.sku}</p>` : ''}
-        <button ${soldOut?'disabled':''} onclick="addToCart('${p.__backendId}');closeProductModal();" class="w-full mt-5 ${soldOut?'bg-slate-100 text-slate-400 cursor-not-allowed':'text-white hover:opacity-90'} rounded-xl py-3 font-semibold transition flex items-center justify-center gap-2" ${soldOut?'':'style="background:linear-gradient(135deg,#b8945f,#d4af7a);"'}><i data-lucide="${soldOut?'x':'shopping-bag'}" class="w-4 h-4"></i>${soldOut?'Unavailable':'Add to Order'}</button>
+        <button onclick="addToCart('${p.__backendId}');closeProductModal();" class="w-full mt-5 text-white hover:opacity-90 rounded-xl py-3 font-semibold transition flex items-center justify-center gap-2" style="background:linear-gradient(135deg,${soldOut?'#9a7b4f,#b8945f':'#b8945f,#d4af7a'});"><i data-lucide="${soldOut?'clock':'shopping-bag'}" class="w-4 h-4"></i>${soldOut?'Backorder this item':'Add to Order'}</button>
       </div>`;
     document.getElementById('productModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -192,11 +222,16 @@
 
   function addToCart(id){
     const p = products.find(x => x.__backendId === id); if (!p) return;
-    const existing = cart.find(c => c.productId === id);
     const inStock = p.quantity || 0;
-    if (existing){ if (existing.qty >= inStock){ showToast('No more stock available','error'); return; } existing.qty++; }
-    else cart.push({ productId:id, name:p.name, sku:p.sku||'', price:p.price||0, qty:1, max:inStock });
-    updateCartCount(); showToast('Added to your order');
+    const backorder = inStock <= 0;
+    const existing = cart.find(c => c.productId === id);
+    if (existing){
+      if (!backorder && existing.qty >= inStock){ showToast('No more stock available','error'); return; }
+      existing.qty++;
+    } else {
+      cart.push({ productId:id, name:p.name, sku:p.sku||'', price:p.price||0, qty:1, max: backorder ? 0 : inStock, backorder });
+    }
+    updateCartCount(); showToast(backorder ? 'Added as backorder' : 'Added to your order');
   }
   function updateCartCount(){
     const count = cart.reduce((s,i)=>s+i.qty,0);
@@ -216,7 +251,7 @@
     const total = cart.reduce((s,i)=>s+i.qty*i.price,0);
     itemsArea.innerHTML = cart.map((it,i)=>`
       <div class="flex items-center gap-3 py-3 border-b">
-        <div class="flex-1 min-w-0"><p class="text-sm font-medium text-slate-800 truncate">${it.name}</p><p class="text-xs text-slate-500">${formatCurrency(it.price)} each</p></div>
+        <div class="flex-1 min-w-0"><p class="text-sm font-medium text-slate-800 truncate">${it.name}${it.backorder?' <span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded align-middle">BACKORDER</span>':''}</p><p class="text-xs text-slate-500">${formatCurrency(it.price)} each</p></div>
         <div class="flex items-center gap-2">
           <button onclick="changeQty(${i},-1)" class="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 font-bold text-slate-600">-</button>
           <span class="w-6 text-center text-sm font-semibold">${it.qty}</span>
@@ -234,7 +269,7 @@
     const it = cart[i]; if (!it) return;
     it.qty += d;
     if (it.qty <= 0){ cart.splice(i,1); }
-    else if (it.max && it.qty > it.max){ it.qty = it.max; showToast('Reached available stock','error'); }
+    else if (!it.backorder && it.max && it.qty > it.max){ it.qty = it.max; showToast('Reached available stock','error'); }
     updateCartCount(); renderCart();
   }
 
@@ -261,6 +296,7 @@
     const name = document.getElementById('ordName').value.trim();
     const phone = document.getElementById('ordPhone').value.trim();
     if (!name || !phone){ showToast('Name and phone are required','error'); return; }
+    const hasBackorder = cart.some(i => i.backorder);
     const order = {
       type:'customer_order',
       order_name: name,
@@ -268,8 +304,8 @@
       order_address: document.getElementById('ordAddr').value.trim(),
       order_role: document.getElementById('ordRole').value.trim(),
       order_phone: phone,
-      order_notes: document.getElementById('ordNotes').value.trim(),
-      order_items: JSON.stringify(cart.map(i => [i.productId, i.qty, i.price])),
+      order_notes: (hasBackorder ? '[Includes BACKORDER items] ' : '') + document.getElementById('ordNotes').value.trim(),
+      order_items: JSON.stringify(cart.map(i => [i.productId, i.qty, i.price, i.backorder ? 1 : 0])),
       order_total: cart.reduce((s,i)=>s+i.qty*i.price,0),
       order_status: 'new',
       created_at: new Date().toISOString()
