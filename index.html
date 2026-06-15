@@ -28,17 +28,6 @@
  </head>
  <body class="min-h-full" style="background:#f6f5f2;">
 
-  <!-- SETUP (first run only, stored on device) -->
-  <div id="setupScreen" class="hidden fixed inset-0 z-[200] bg-slate-900 text-white overflow-y-auto">
-    <div class="max-w-lg mx-auto px-6 py-12">
-      <h1 class="font-display text-2xl font-bold mb-2">Connect Catalogue</h1>
-      <p class="text-slate-300 text-sm mb-6">Paste the same Google Apps Script Web App URL you use for CloudPOS. It links this catalogue to your live products and sends orders back to your system. Stored on this device only.</p>
-      <input id="setupUrlInput" type="url" placeholder="https://script.google.com/macros/s/..../exec" class="w-full rounded-lg px-4 py-3 text-slate-900 text-sm mb-3">
-      <div id="setupError" class="hidden text-red-300 text-sm mb-3"></div>
-      <button onclick="connectCatalogue()" id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 rounded-lg py-3 font-semibold transition">Connect</button>
-    </div>
-  </div>
-
   <!-- HEADER -->
   <header class="text-white" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);">
     <div class="max-w-7xl mx-auto px-4 py-8 flex items-center justify-between gap-4">
@@ -126,7 +115,7 @@
 
   <script>
   const SHEETS_URL_KEY = 'catalogue_sheets_url';
-  let SHEET_URL = localStorage.getItem(SHEETS_URL_KEY) || '';
+  const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyX8KxQ4oUCygvWZ9RkwIQRQjw33aygrlQzMLj8uTeGpdpEzFCpuO_XAebAuuVT99Lf/exec';
   let products = [], companyInfo = null, cart = [], activeCategory = 'all';
   let catSearch = '', catSort = 'name';
 
@@ -409,26 +398,11 @@
     } catch(err){ btn.disabled=false; btn.textContent='Confirm & Send'; showToast('Network error, try again','error'); }
   }
 
-  /* ===== SETUP ===== */
-  function showSetup(){ document.getElementById('setupScreen').classList.remove('hidden'); }
-  async function connectCatalogue(){
-    const url = document.getElementById('setupUrlInput').value.trim();
-    const err = document.getElementById('setupError');
-    const btn = document.getElementById('connectBtn');
-    if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url)){ err.textContent='That does not look like a valid Web App URL (must end in /exec).'; err.classList.remove('hidden'); return; }
-    btn.disabled=true; btn.textContent='Connecting…';
-    SHEET_URL = url; localStorage.setItem(SHEETS_URL_KEY, url);
-    const ok = await loadData();
-    btn.disabled=false; btn.textContent='Connect';
-    if (ok){ document.getElementById('setupScreen').classList.add('hidden'); }
-    else { err.textContent='Could not reach the data. Check the URL and that access is set to "Anyone".'; err.classList.remove('hidden'); }
-  }
-
   /* ===== BOOT ===== */
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape'){ closeProductModal(); closeCart(); } });
   (async () => {
-    if (!SHEET_URL){ showSetup(); }
-    else { const ok = await loadData(); if (!ok) showSetup(); }
+    const ok = await loadData();
+    if (!ok){ document.getElementById('catalogueArea').innerHTML = '<div class="text-center py-20 text-slate-400"><p class="font-semibold text-slate-600 mb-1">Unable to load products right now.</p><p class="text-sm">Please check your connection and refresh the page.</p></div>'; }
     lucide.createIcons();
   })();
   </script>
