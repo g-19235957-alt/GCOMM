@@ -12,6 +12,7 @@
     html, body { margin:0; }
     body { font-family:'DM Sans',sans-serif; background:#f6f5f2; }
     .display { font-family:'Playfair Display',serif; }
+    .product-name { font-family:'DM Sans',sans-serif; font-weight:600; letter-spacing:-0.01em; }
     .toast-enter { animation: slideIn 0.3s ease; }
     @keyframes slideIn { from { transform: translateY(-100%); opacity:0; } to { transform: translateY(0); opacity:1; } }
     @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
@@ -285,7 +286,7 @@
       </div>
       <div class="p-4 flex-1 flex flex-col">
         ${p.category ? `<span class="text-[10px] font-bold text-[#b8945f] uppercase tracking-[0.12em] mb-1">${p.category}</span>` : ''}
-        <h3 class="display text-base font-bold text-slate-900 leading-snug cursor-pointer hover:text-[#b8945f] transition" onclick="openProductModal('${p.__backendId}')">${p.name}</h3>
+        <h3 class="product-name text-base text-slate-900 leading-snug cursor-pointer hover:text-[#b8945f] transition" onclick="openProductModal('${p.__backendId}')">${p.name}</h3>
         ${p.description ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">${plainSnippet(p.description, 90)}</p>` : ''}
         <div class="mt-auto pt-3">
           <div class="flex items-end justify-between mb-2.5">
@@ -313,10 +314,10 @@
       return { price, stock, soldOut, useVar };
     };
     const variantSelector = variants.length ? `
-      <div class="border-t pt-4">
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">${p.variant_label || 'Options'}</p>
-        <div class="flex flex-wrap gap-2" id="variantBtns">
-          ${variants.map((v,i)=>`<button onclick="selectModalVariant(${i})" data-vi="${i}" class="variant-btn px-3 py-2 rounded-lg border text-sm font-medium transition ${i===0?'border-[#b8945f] bg-[#faf6ef] text-slate-800':'border-slate-200 text-slate-600 hover:border-slate-300'}">${v.name} <span class="text-xs text-slate-400">${formatCurrency(v.price)}${(v.stock||0)<=0?' · sold out':''}</span></button>`).join('')}
+      <div>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">${p.variant_label || 'Options'}</p>
+        <div class="flex flex-wrap gap-2 max-h-24 overflow-y-auto" id="variantBtns">
+          ${variants.map((v,i)=>`<button onclick="selectModalVariant(${i})" data-vi="${i}" class="variant-btn px-3 py-1.5 rounded-lg border text-sm font-medium transition ${i===0?'border-[#b8945f] bg-[#faf6ef] text-slate-800':'border-slate-200 text-slate-600 hover:border-slate-300'}">${v.name} <span class="text-xs text-slate-400">${formatCurrency(v.price)}${(v.stock||0)<=0?' · sold out':''}</span></button>`).join('')}
         </div>
       </div>` : '';
     const b0 = renderBottom();
@@ -328,17 +329,17 @@
         </div>
         <div class="p-6">
           ${p.category ? `<span class="text-[10px] font-bold text-[#b8945f] uppercase tracking-[0.15em]">${p.category}</span>` : ''}
-          <h2 class="display text-2xl font-bold text-slate-900 mt-1">${p.name}</h2>
+          <h2 class="product-name text-2xl text-slate-900 mt-1">${p.name}</h2>
           <div class="flex items-center gap-3 mt-2 mb-4">
             <span id="modalPrice" class="text-2xl font-bold text-slate-900">${formatCurrency(b0.price)}</span>
             <span id="modalStockBadge" class="px-2.5 py-1 rounded-full text-xs font-semibold ${b0.soldOut?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700'}">${b0.soldOut?'Sold out — backorder available':b0.stock+' in stock'}</span>
           </div>
-          ${variantSelector}
           ${p.description ? `<div class="border-t pt-4 mt-4"><p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Description</p><div class="text-sm text-slate-600 leading-relaxed">${renderMarkup(p.description)}</div></div>` : '<p class="text-sm text-slate-400 italic mt-4">No description available.</p>'}
           ${p.sku ? `<p class="text-xs text-slate-400 mt-4">SKU: ${p.sku}</p>` : ''}
         </div>
       </div>
       <div class="border-t bg-white p-5 flex-shrink-0">
+        ${variantSelector ? `<div class="mb-3">${variantSelector}</div>` : ''}
         <div class="flex items-center justify-between gap-3 mb-3">
           <span class="text-sm font-semibold text-slate-600">Quantity</span>
           <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden">
