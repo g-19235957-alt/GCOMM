@@ -131,6 +131,28 @@
     setTimeout(()=>t.remove(), 3000);
   }
   function formatCurrency(n){ return new Intl.NumberFormat('ms-MY',{style:'currency',currency:'MYR'}).format(n||0); }
+  function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function renderMarkup(text){
+    if (!text) return '';
+    const escaped = escapeHtml(text);
+    const lines = escaped.split('\n');
+    let html = '', inList = false;
+    const inline = s => s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>');
+    for (let raw of lines){
+      const line = raw.trim();
+      if (/^[-*]\s+/.test(line)){
+        if (!inList){ html += '<ul style="list-style:disc;margin:4px 0;padding-left:18px;">'; inList = true; }
+        html += '<li>' + inline(line.replace(/^[-*]\s+/,'')) + '</li>';
+      } else {
+        if (inList){ html += '</ul>'; inList = false; }
+        if (line === '') html += '<div style="height:5px;"></div>';
+        else html += '<p style="margin:2px 0;">' + inline(line) + '</p>';
+      }
+    }
+    if (inList) html += '</ul>';
+    return html;
+  }
+  function plainSnippet(text, n){ const t = (text||'').replace(/[*\-]/g,'').replace(/\s+/g,' ').trim(); return t.length > n ? t.slice(0,n)+'…' : t; }
 
   async function loadData(){
     try {
@@ -254,7 +276,7 @@
       <div class="p-4 flex-1 flex flex-col">
         ${p.category ? `<span class="text-[10px] font-bold text-[#b8945f] uppercase tracking-[0.12em] mb-1">${p.category}</span>` : ''}
         <h3 class="display text-base font-bold text-slate-900 leading-snug cursor-pointer hover:text-[#b8945f] transition" onclick="openProductModal('${p.__backendId}')">${p.name}</h3>
-        ${p.description ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">${p.description}</p>` : ''}
+        ${p.description ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">${plainSnippet(p.description, 90)}</p>` : ''}
         <div class="mt-auto pt-3">
           <div class="flex items-end justify-between mb-2.5">
             <span class="text-lg font-bold text-slate-900">${formatCurrency(p.price)}</span>
@@ -272,19 +294,23 @@
     const inner = document.getElementById('productModalInner');
     inner.innerHTML = `
       <button onclick="closeProductModal()" class="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur hover:bg-white rounded-full w-9 h-9 flex items-center justify-center shadow-md transition"><i data-lucide="x" class="w-5 h-5 text-slate-700"></i></button>
-      <div class="h-64 sm:h-80 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
-        ${p.product_photo ? `<img src="${p.product_photo}" alt="${p.name}" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<i data-lucide=\\'package\\' class=\\'w-20 h-20 text-slate-300\\'></i>';lucide.createIcons();">` : `<i data-lucide="package" class="w-20 h-20 text-slate-300"></i>`}
-      </div>
-      <div class="p-6 overflow-y-auto">
-        ${p.category ? `<span class="text-[10px] font-bold text-[#b8945f] uppercase tracking-[0.15em]">${p.category}</span>` : ''}
-        <h2 class="display text-2xl font-bold text-slate-900 mt-1">${p.name}</h2>
-        <div class="flex items-center gap-3 mt-2 mb-4">
-          <span class="text-2xl font-bold text-slate-900">${formatCurrency(p.price)}</span>
-          <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${soldOut?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700'}">${soldOut?'Sold out — backorder available':p.quantity+' in stock'}</span>
+      <div class="overflow-y-auto flex-1">
+        <div class="h-64 sm:h-72 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden">
+          ${p.product_photo ? `<img src="${p.product_photo}" alt="${p.name}" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<i data-lucide=\\'package\\' class=\\'w-20 h-20 text-slate-300\\'></i>';lucide.createIcons();">` : `<i data-lucide="package" class="w-20 h-20 text-slate-300"></i>`}
         </div>
-        ${p.description ? `<div class="border-t pt-4"><p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Description</p><p class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">${p.description}</p></div>` : '<p class="text-sm text-slate-400 italic">No description available.</p>'}
-        ${p.sku ? `<p class="text-xs text-slate-400 mt-4">SKU: ${p.sku}</p>` : ''}
-        <div class="flex items-center gap-3 mt-5">
+        <div class="p-6">
+          ${p.category ? `<span class="text-[10px] font-bold text-[#b8945f] uppercase tracking-[0.15em]">${p.category}</span>` : ''}
+          <h2 class="display text-2xl font-bold text-slate-900 mt-1">${p.name}</h2>
+          <div class="flex items-center gap-3 mt-2 mb-4">
+            <span class="text-2xl font-bold text-slate-900">${formatCurrency(p.price)}</span>
+            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${soldOut?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700'}">${soldOut?'Sold out — backorder available':p.quantity+' in stock'}</span>
+          </div>
+          ${p.description ? `<div class="border-t pt-4"><p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Description</p><div class="text-sm text-slate-600 leading-relaxed">${renderMarkup(p.description)}</div></div>` : '<p class="text-sm text-slate-400 italic">No description available.</p>'}
+          ${p.sku ? `<p class="text-xs text-slate-400 mt-4">SKU: ${p.sku}</p>` : ''}
+        </div>
+      </div>
+      <div class="border-t bg-white p-5 flex-shrink-0">
+        <div class="flex items-center justify-between gap-3 mb-3">
           <span class="text-sm font-semibold text-slate-600">Quantity</span>
           <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden">
             <button onclick="modalQtyStep(-1)" class="w-9 h-9 hover:bg-slate-100 font-bold text-slate-600 transition">−</button>
@@ -292,7 +318,7 @@
             <button onclick="modalQtyStep(1)" class="w-9 h-9 hover:bg-slate-100 font-bold text-slate-600 transition">+</button>
           </div>
         </div>
-        <button onclick="addToCartQty('${p.__backendId}');closeProductModal();" class="w-full mt-4 text-white hover:opacity-90 rounded-xl py-3 font-semibold transition flex items-center justify-center gap-2" style="background:linear-gradient(135deg,${soldOut?'#9a7b4f,#b8945f':'#b8945f,#d4af7a'});"><i data-lucide="${soldOut?'clock':'shopping-bag'}" class="w-4 h-4"></i>${soldOut?'Backorder this item':'Add to Order'}</button>
+        <button onclick="addToCartQty('${p.__backendId}');closeProductModal();" class="w-full text-white hover:opacity-90 rounded-xl py-3 font-semibold transition flex items-center justify-center gap-2" style="background:linear-gradient(135deg,${soldOut?'#9a7b4f,#b8945f':'#b8945f,#d4af7a'});"><i data-lucide="${soldOut?'clock':'shopping-bag'}" class="w-4 h-4"></i>${soldOut?'Backorder this item':'Add to Order'}</button>
       </div>`;
     document.getElementById('productModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
