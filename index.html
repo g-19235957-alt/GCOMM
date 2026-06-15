@@ -400,6 +400,7 @@
         <div><label class="text-xs text-slate-600 font-semibold block mb-1">Address</label><textarea id="ordAddr" rows="2" class="w-full border rounded-lg px-3 py-2.5 text-sm resize-none" placeholder="Delivery / billing address"></textarea></div>
         <div><label class="text-xs text-slate-600 font-semibold block mb-1">Job / Role</label><input id="ordRole" class="w-full border rounded-lg px-3 py-2.5 text-sm" placeholder="e.g., Purchasing Officer"></div>
         <div><label class="text-xs text-slate-600 font-semibold block mb-1">Phone *</label><input id="ordPhone" class="w-full border rounded-lg px-3 py-2.5 text-sm" placeholder="+60..."></div>
+        <div><label class="text-xs text-slate-600 font-semibold block mb-1">Preferred Payment Method</label><select id="ordPayment" class="w-full border rounded-lg px-3 py-2.5 text-sm bg-white"><option value="cash">Cash</option><option value="lpo">LPO (Local Purchase Order)</option><option value="qr_banking">Online Banking</option></select></div>
         <div><label class="text-xs text-slate-600 font-semibold block mb-1">Notes</label><textarea id="ordNotes" rows="2" class="w-full border rounded-lg px-3 py-2.5 text-sm resize-none" placeholder="Anything else?"></textarea></div>
       </div>`;
     footer.innerHTML = `
@@ -419,6 +420,7 @@
       order_address: document.getElementById('ordAddr').value.trim(),
       order_role: document.getElementById('ordRole').value.trim(),
       order_phone: phone,
+      order_payment: document.getElementById('ordPayment').value,
       order_notes: (hasBackorder ? '[Includes BACKORDER items] ' : '') + document.getElementById('ordNotes').value.trim(),
       order_items: JSON.stringify(cart.map(i => [i.productId, i.qty, i.price, i.backorder ? 1 : 0])),
       order_total: cart.reduce((s,i)=>s+i.qty*i.price,0),
