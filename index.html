@@ -226,8 +226,9 @@
       if (catSort === 'price_high') return (b.price||0) - (a.price||0);
       return a.name.localeCompare(b.name);
     });
-    const available = visible.filter(p => (p.quantity||0) > 0);
-    const soldOut = visible.filter(p => (p.quantity||0) <= 0);
+    const stockOf = p => { const v = getVariants(p); return v.length ? v.reduce((s,x)=>s+(x.stock||0),0) : (p.quantity||0); };
+    const available = visible.filter(p => stockOf(p) > 0);
+    const soldOut = visible.filter(p => stockOf(p) <= 0);
     const gridOpen = '<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">';
     let body;
     if (visible.length === 0){
@@ -266,11 +267,20 @@
   function updateCatSort(v){ catSort = v; renderCatalogue(); }
 
   function renderProductCard(p){
-    const soldOut = (p.quantity || 0) <= 0;
+    const variants = getVariants(p);
+    const hasVar = variants.length > 0;
+    const totalStock = hasVar ? variants.reduce((s,v)=>s+(v.stock||0),0) : (p.quantity||0);
+    const soldOut = totalStock <= 0;
+    const prices = hasVar ? variants.map(v=>v.price||0) : [p.price||0];
+    const minP = Math.min(...prices), maxP = Math.max(...prices);
+    const priceLabel = hasVar ? (minP===maxP ? formatCurrency(minP) : `From ${formatCurrency(minP)}`) : formatCurrency(p.price);
+    const btnLabel = hasVar ? 'Choose Option' : (soldOut?'Backorder':'Add to Order');
+    const btnIcon = hasVar ? 'list' : (soldOut?'clock':'plus');
     return `<div class="card-hover bg-white rounded-2xl overflow-hidden flex flex-col" style="box-shadow:0 4px 20px -8px rgba(0,0,0,0.1);">
       <div class="relative h-40 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden cursor-pointer group" onclick="openProductModal('${p.__backendId}')">
         ${p.product_photo ? `<img src="${p.product_photo}" alt="${p.name}" class="img-zoom w-full h-full object-cover" onerror="this.style.display='none'">` : `<i data-lucide="package" class="w-14 h-14 text-slate-300"></i>`}
         ${soldOut ? `<div class="absolute top-3 left-3"><span class="bg-rose-600 text-white px-3 py-1 rounded-full font-semibold text-xs tracking-wide shadow">SOLD OUT</span></div>` : ''}
+        ${hasVar ? `<div class="absolute top-3 left-3"><span class="bg-[#1a1a2e] text-white px-3 py-1 rounded-full font-semibold text-xs tracking-wide shadow">${variants.length} ${p.variant_label||'options'}</span></div>` : ''}
         <div class="absolute bottom-3 right-3 bg-white/90 backdrop-blur rounded-full w-9 h-9 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md"><i data-lucide="maximize-2" class="w-4 h-4 text-slate-700"></i></div>
       </div>
       <div class="p-4 flex-1 flex flex-col">
@@ -279,19 +289,37 @@
         ${p.description ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">${plainSnippet(p.description, 90)}</p>` : ''}
         <div class="mt-auto pt-3">
           <div class="flex items-end justify-between mb-2.5">
-            <span class="text-lg font-bold text-slate-900">${formatCurrency(p.price)}</span>
-            <span class="text-[11px] ${soldOut?'text-rose-500 font-semibold':'text-slate-400'}">${soldOut?'Backorder':p.quantity+' left'}</span>
+            <span class="text-lg font-bold text-slate-900">${priceLabel}</span>
+            <span class="text-[11px] ${soldOut?'text-rose-500 font-semibold':'text-slate-400'}">${soldOut?'Backorder':totalStock+' left'}</span>
           </div>
-          <button onclick="addToCart('${p.__backendId}')" class="w-full text-white hover:opacity-90 rounded-lg py-2 text-xs font-semibold transition flex items-center justify-center gap-1.5" style="background:linear-gradient(135deg,${soldOut?'#9a7b4f,#b8945f':'#1a1a2e,#16213e'});"><i data-lucide="${soldOut?'clock':'plus'}" class="w-3.5 h-3.5"></i>${soldOut?'Backorder':'Add to Order'}</button>
+          <button onclick="addToCart('${p.__backendId}')" class="w-full text-white hover:opacity-90 rounded-lg py-2 text-xs font-semibold transition flex items-center justify-center gap-1.5" style="background:linear-gradient(135deg,${soldOut&&!hasVar?'#9a7b4f,#b8945f':'#1a1a2e,#16213e'});"><i data-lucide="${btnIcon}" class="w-3.5 h-3.5"></i>${btnLabel}</button>
         </div>
       </div>
     </div>`;
   }
 
+  function getVariants(p){ try { const v = p.variants ? JSON.parse(p.variants) : []; return Array.isArray(v) ? v : []; } catch(e){ return []; } }
+  let modalSelectedVariant = -1;
   function openProductModal(id){
     const p = products.find(x => x.__backendId === id); if (!p) return;
-    const soldOut = (p.quantity || 0) <= 0;
+    const variants = getVariants(p);
+    modalSelectedVariant = variants.length ? 0 : -1;
     const inner = document.getElementById('productModalInner');
+    const renderBottom = () => {
+      const useVar = modalSelectedVariant >= 0 ? variants[modalSelectedVariant] : null;
+      const price = useVar ? useVar.price : p.price;
+      const stock = useVar ? (useVar.stock||0) : (p.quantity||0);
+      const soldOut = stock <= 0;
+      return { price, stock, soldOut, useVar };
+    };
+    const variantSelector = variants.length ? `
+      <div class="border-t pt-4">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">${p.variant_label || 'Options'}</p>
+        <div class="flex flex-wrap gap-2" id="variantBtns">
+          ${variants.map((v,i)=>`<button onclick="selectModalVariant(${i})" data-vi="${i}" class="variant-btn px-3 py-2 rounded-lg border text-sm font-medium transition ${i===0?'border-[#b8945f] bg-[#faf6ef] text-slate-800':'border-slate-200 text-slate-600 hover:border-slate-300'}">${v.name} <span class="text-xs text-slate-400">${formatCurrency(v.price)}${(v.stock||0)<=0?' · sold out':''}</span></button>`).join('')}
+        </div>
+      </div>` : '';
+    const b0 = renderBottom();
     inner.innerHTML = `
       <button onclick="closeProductModal()" class="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur hover:bg-white rounded-full w-9 h-9 flex items-center justify-center shadow-md transition"><i data-lucide="x" class="w-5 h-5 text-slate-700"></i></button>
       <div class="overflow-y-auto flex-1">
@@ -302,10 +330,11 @@
           ${p.category ? `<span class="text-[10px] font-bold text-[#b8945f] uppercase tracking-[0.15em]">${p.category}</span>` : ''}
           <h2 class="display text-2xl font-bold text-slate-900 mt-1">${p.name}</h2>
           <div class="flex items-center gap-3 mt-2 mb-4">
-            <span class="text-2xl font-bold text-slate-900">${formatCurrency(p.price)}</span>
-            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${soldOut?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700'}">${soldOut?'Sold out — backorder available':p.quantity+' in stock'}</span>
+            <span id="modalPrice" class="text-2xl font-bold text-slate-900">${formatCurrency(b0.price)}</span>
+            <span id="modalStockBadge" class="px-2.5 py-1 rounded-full text-xs font-semibold ${b0.soldOut?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700'}">${b0.soldOut?'Sold out — backorder available':b0.stock+' in stock'}</span>
           </div>
-          ${p.description ? `<div class="border-t pt-4"><p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Description</p><div class="text-sm text-slate-600 leading-relaxed">${renderMarkup(p.description)}</div></div>` : '<p class="text-sm text-slate-400 italic">No description available.</p>'}
+          ${variantSelector}
+          ${p.description ? `<div class="border-t pt-4 mt-4"><p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Description</p><div class="text-sm text-slate-600 leading-relaxed">${renderMarkup(p.description)}</div></div>` : '<p class="text-sm text-slate-400 italic mt-4">No description available.</p>'}
           ${p.sku ? `<p class="text-xs text-slate-400 mt-4">SKU: ${p.sku}</p>` : ''}
         </div>
       </div>
@@ -318,10 +347,29 @@
             <button onclick="modalQtyStep(1)" class="w-9 h-9 hover:bg-slate-100 font-bold text-slate-600 transition">+</button>
           </div>
         </div>
-        <button onclick="addToCartQty('${p.__backendId}');closeProductModal();" class="w-full text-white hover:opacity-90 rounded-xl py-3 font-semibold transition flex items-center justify-center gap-2" style="background:linear-gradient(135deg,${soldOut?'#9a7b4f,#b8945f':'#b8945f,#d4af7a'});"><i data-lucide="${soldOut?'clock':'shopping-bag'}" class="w-4 h-4"></i>${soldOut?'Backorder this item':'Add to Order'}</button>
+        <button id="modalAddBtn" onclick="addToCartQty('${p.__backendId}');closeProductModal();" class="w-full text-white hover:opacity-90 rounded-xl py-3 font-semibold transition flex items-center justify-center gap-2" style="background:linear-gradient(135deg,${b0.soldOut?'#9a7b4f,#b8945f':'#b8945f,#d4af7a'});"><i data-lucide="${b0.soldOut?'clock':'shopping-bag'}" class="w-4 h-4"></i>${b0.soldOut?'Backorder this item':'Add to Order'}</button>
       </div>`;
     document.getElementById('productModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    window._modalProduct = p;
+    lucide.createIcons();
+  }
+  function selectModalVariant(i){
+    modalSelectedVariant = i;
+    const p = window._modalProduct; if (!p) return;
+    const variants = getVariants(p); const v = variants[i];
+    const stock = v.stock||0; const soldOut = stock<=0;
+    document.getElementById('modalPrice').textContent = formatCurrency(v.price);
+    const badge = document.getElementById('modalStockBadge');
+    badge.textContent = soldOut?'Sold out — backorder available':stock+' in stock';
+    badge.className = `px-2.5 py-1 rounded-full text-xs font-semibold ${soldOut?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700'}`;
+    document.querySelectorAll('.variant-btn').forEach(btn => {
+      const on = parseInt(btn.dataset.vi) === i;
+      btn.className = `variant-btn px-3 py-2 rounded-lg border text-sm font-medium transition ${on?'border-[#b8945f] bg-[#faf6ef] text-slate-800':'border-slate-200 text-slate-600 hover:border-slate-300'}`;
+    });
+    const addBtn = document.getElementById('modalAddBtn');
+    addBtn.style.background = `linear-gradient(135deg,${soldOut?'#9a7b4f,#b8945f':'#b8945f,#d4af7a'})`;
+    addBtn.innerHTML = `<i data-lucide="${soldOut?'clock':'shopping-bag'}" class="w-4 h-4"></i>${soldOut?'Backorder this item':'Add to Order'}`;
     lucide.createIcons();
   }
   function closeProductModal(){
@@ -336,16 +384,20 @@
     const inp = document.getElementById('modalQty');
     let n = inp ? Math.max(1, parseInt(inp.value)||1) : 1;
     const p = products.find(x => x.__backendId === id); if (!p) return;
-    const inStock = p.quantity || 0;
+    const variants = getVariants(p);
+    const v = (variants.length && modalSelectedVariant >= 0) ? variants[modalSelectedVariant] : null;
+    const price = v ? v.price : (p.price||0);
+    const inStock = v ? (v.stock||0) : (p.quantity||0);
     const backorder = inStock <= 0;
-    const existing = cart.find(c => c.productId === id);
+    const vname = v ? v.name : '';
+    const existing = cart.find(c => c.productId === id && c.variantName === vname);
     if (existing){
       let target = existing.qty + n;
       if (!backorder && target > inStock){ target = inStock; showToast('Limited to available stock','error'); }
       existing.qty = target;
     } else {
       if (!backorder && n > inStock){ n = inStock; showToast('Limited to available stock','error'); }
-      cart.push({ productId:id, name:p.name, sku:p.sku||'', price:p.price||0, qty:n, max: backorder ? 0 : inStock, backorder });
+      cart.push({ productId:id, name:p.name, sku:p.sku||'', price, qty:n, max: backorder ? 0 : inStock, backorder, variantName:vname });
     }
     updateCartCount(); saveCart(); showToast(backorder ? `Added ${n} as backorder` : `Added ${n} to your order`);
   }
@@ -354,9 +406,10 @@
 
   function addToCart(id){
     const p = products.find(x => x.__backendId === id); if (!p) return;
+    if (getVariants(p).length){ openProductModal(id); return; } // variant products: choose in modal
     const inStock = p.quantity || 0;
     const backorder = inStock <= 0;
-    const existing = cart.find(c => c.productId === id);
+    const existing = cart.find(c => c.productId === id && !c.variantName);
     if (existing){
       if (!backorder && existing.qty >= inStock){ showToast('No more stock available','error'); return; }
       existing.qty++;
@@ -388,7 +441,7 @@
     const total = cart.reduce((s,i)=>s+i.qty*i.price,0);
     itemsArea.innerHTML = cart.map((it,i)=>`
       <div class="flex items-center gap-3 py-3 border-b">
-        <div class="flex-1 min-w-0"><p class="text-sm font-medium text-slate-800 truncate">${it.name}${it.backorder?' <span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded align-middle">BACKORDER</span>':''}</p><p class="text-xs text-slate-500">${formatCurrency(it.price)} each</p></div>
+        <div class="flex-1 min-w-0"><p class="text-sm font-medium text-slate-800 truncate">${it.name}${it.variantName?` <span class="text-[#b8945f] font-semibold">(${it.variantName})</span>`:''}${it.backorder?' <span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded align-middle">BACKORDER</span>':''}</p><p class="text-xs text-slate-500">${formatCurrency(it.price)} each</p></div>
         <div class="flex items-center gap-2">
           <button onclick="changeQty(${i},-1)" class="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 font-bold text-slate-600">-</button>
           <span class="w-6 text-center text-sm font-semibold">${it.qty}</span>
@@ -449,7 +502,7 @@
       phone,
       payment: document.getElementById('ordPayment').value,
       notes: document.getElementById('ordNotes').value.trim(),
-      items: cart.map(i => ({ name:i.name, sku:i.sku, qty:i.qty, price:i.price, backorder:i.backorder })),
+      items: cart.map(i => ({ name:i.name, sku:i.sku, qty:i.qty, price:i.price, backorder:i.backorder, variantName:i.variantName||'' })),
       total: cart.reduce((s,i)=>s+i.qty*i.price,0),
       date: new Date().toISOString()
     };
@@ -463,7 +516,7 @@
       order_phone: phone,
       order_payment: orderSnapshot.payment,
       order_notes: (hasBackorder ? '[Includes BACKORDER items] ' : '') + orderSnapshot.notes,
-      order_items: JSON.stringify(cart.map(i => [i.productId, i.qty, i.price, i.backorder ? 1 : 0])),
+      order_items: JSON.stringify(cart.map(i => [i.productId, i.qty, i.price, i.backorder ? 1 : 0, i.variantName||''])),
       order_total: orderSnapshot.total,
       order_status: 'new',
       created_at: orderSnapshot.date
@@ -487,7 +540,7 @@
     const c = companyInfo || {};
     const payLabel = ({cash:'Cash', lpo:'LPO (Local Purchase Order)', qr_banking:'Online Banking'})[q.payment] || q.payment;
     const dateStr = new Date(q.date).toLocaleDateString('en-MY', { year:'numeric', month:'long', day:'numeric' });
-    const rows = q.items.map((it,i)=>`<tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:6px 8px;color:#475569;">${i+1}</td><td style="padding:6px 8px;font-family:monospace;font-size:11px;color:#475569;">${it.sku||'-'}</td><td style="padding:6px 8px;font-weight:500;color:#1e293b;">${it.name}${it.backorder?' <span style="color:#b45309;font-size:10px;font-weight:700;">(Backorder)</span>':''}</td><td style="padding:6px 8px;text-align:center;color:#334155;">${it.qty}</td><td style="padding:6px 8px;text-align:right;color:#334155;">${formatCurrency(it.price)}</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:#1e293b;">${formatCurrency(it.qty*it.price)}</td></tr>`).join('');
+    const rows = q.items.map((it,i)=>`<tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:6px 8px;color:#475569;">${i+1}</td><td style="padding:6px 8px;font-family:monospace;font-size:11px;color:#475569;">${it.sku||'-'}</td><td style="padding:6px 8px;font-weight:500;color:#1e293b;">${it.name}${it.variantName?` <span style="color:#b8945f;">(${it.variantName})</span>`:''}${it.backorder?' <span style="color:#b45309;font-size:10px;font-weight:700;">(Backorder)</span>':''}</td><td style="padding:6px 8px;text-align:center;color:#334155;">${it.qty}</td><td style="padding:6px 8px;text-align:right;color:#334155;">${formatCurrency(it.price)}</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:#1e293b;">${formatCurrency(it.qty*it.price)}</td></tr>`).join('');
     const docHtml = `
       <div id="quotationDoc" style="background:#fff;padding:32px;max-width:760px;margin:0 auto;font-family:'DM Sans',Arial,sans-serif;color:#1e293b;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;border-bottom:3px solid #b8945f;padding-bottom:18px;margin-bottom:20px;">
