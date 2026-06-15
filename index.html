@@ -439,19 +439,34 @@
     const phone = document.getElementById('ordPhone').value.trim();
     if (!name || !phone){ showToast('Name and phone are required','error'); return; }
     const hasBackorder = cart.some(i => i.backorder);
+    const orderRef = 'ORD-' + new Date().getFullYear() + '-' + Date.now().toString().slice(-6);
+    const orderSnapshot = {
+      ref: orderRef,
+      name,
+      organization: document.getElementById('ordOrg').value.trim(),
+      address: document.getElementById('ordAddr').value.trim(),
+      role: document.getElementById('ordRole').value.trim(),
+      phone,
+      payment: document.getElementById('ordPayment').value,
+      notes: document.getElementById('ordNotes').value.trim(),
+      items: cart.map(i => ({ name:i.name, sku:i.sku, qty:i.qty, price:i.price, backorder:i.backorder })),
+      total: cart.reduce((s,i)=>s+i.qty*i.price,0),
+      date: new Date().toISOString()
+    };
     const order = {
       type:'customer_order',
+      order_ref: orderRef,
       order_name: name,
-      order_organization: document.getElementById('ordOrg').value.trim(),
-      order_address: document.getElementById('ordAddr').value.trim(),
-      order_role: document.getElementById('ordRole').value.trim(),
+      order_organization: orderSnapshot.organization,
+      order_address: orderSnapshot.address,
+      order_role: orderSnapshot.role,
       order_phone: phone,
-      order_payment: document.getElementById('ordPayment').value,
-      order_notes: (hasBackorder ? '[Includes BACKORDER items] ' : '') + document.getElementById('ordNotes').value.trim(),
+      order_payment: orderSnapshot.payment,
+      order_notes: (hasBackorder ? '[Includes BACKORDER items] ' : '') + orderSnapshot.notes,
       order_items: JSON.stringify(cart.map(i => [i.productId, i.qty, i.price, i.backorder ? 1 : 0])),
-      order_total: cart.reduce((s,i)=>s+i.qty*i.price,0),
+      order_total: orderSnapshot.total,
       order_status: 'new',
-      created_at: new Date().toISOString()
+      created_at: orderSnapshot.date
     };
     const btn = document.getElementById('submitOrderBtn'); btn.disabled = true; btn.textContent = 'Sending…';
     try {
@@ -459,11 +474,92 @@
       const json = await res.json();
       if (json.ok){
         cart = []; updateCartCount(); saveCart();
-        document.getElementById('cartItemsArea').innerHTML = '<div class="text-center py-16"><i data-lucide="check-circle" class="w-12 h-12 mx-auto mb-3 text-emerald-500"></i><h3 class="font-bold text-slate-800">Order sent!</h3><p class="text-sm text-slate-500 mt-1">Thank you. We\'ll contact you shortly to confirm.</p></div>';
-        document.getElementById('cartFooter').innerHTML = '<button onclick="closeCart();renderCatalogue()" class="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-3 font-semibold">Continue Browsing</button>';
+        window.lastQuotation = orderSnapshot;
+        document.getElementById('cartItemsArea').innerHTML = `<div class="text-center py-10"><i data-lucide="check-circle" class="w-14 h-14 mx-auto mb-3 text-emerald-500"></i><h3 class="display text-xl font-bold text-slate-800">Order Sent!</h3><p class="text-sm text-slate-500 mt-1">Thank you, ${name}. We'll contact you shortly to confirm.</p><div class="mt-4 inline-block bg-slate-50 border rounded-lg px-4 py-2"><p class="text-xs text-slate-400">Your reference number</p><p class="font-mono font-bold text-slate-800">${orderRef}</p></div><p class="text-xs text-slate-400 mt-4">Save your quotation below for your records.</p></div>`;
+        document.getElementById('cartFooter').innerHTML = `<button onclick="showQuotation()" class="w-full text-white rounded-lg py-3 font-semibold mb-2 flex items-center justify-center gap-2" style="background:linear-gradient(135deg,#b8945f,#d4af7a);"><i data-lucide="file-text" class="w-4 h-4"></i>View / Save Quotation</button><button onclick="closeCart();renderCatalogue()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg py-2.5 font-semibold">Continue Browsing</button>`;
         lucide.createIcons();
       } else { btn.disabled=false; btn.textContent='Confirm & Send'; showToast('Could not send order','error'); }
     } catch(err){ btn.disabled=false; btn.textContent='Confirm & Send'; showToast('Network error, try again','error'); }
+  }
+
+  function showQuotation(){
+    const q = window.lastQuotation; if (!q) return;
+    const c = companyInfo || {};
+    const payLabel = ({cash:'Cash', lpo:'LPO (Local Purchase Order)', qr_banking:'Online Banking'})[q.payment] || q.payment;
+    const dateStr = new Date(q.date).toLocaleDateString('en-MY', { year:'numeric', month:'long', day:'numeric' });
+    const rows = q.items.map((it,i)=>`<tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:6px 8px;color:#475569;">${i+1}</td><td style="padding:6px 8px;font-family:monospace;font-size:11px;color:#475569;">${it.sku||'-'}</td><td style="padding:6px 8px;font-weight:500;color:#1e293b;">${it.name}${it.backorder?' <span style="color:#b45309;font-size:10px;font-weight:700;">(Backorder)</span>':''}</td><td style="padding:6px 8px;text-align:center;color:#334155;">${it.qty}</td><td style="padding:6px 8px;text-align:right;color:#334155;">${formatCurrency(it.price)}</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:#1e293b;">${formatCurrency(it.qty*it.price)}</td></tr>`).join('');
+    const docHtml = `
+      <div id="quotationDoc" style="background:#fff;padding:32px;max-width:760px;margin:0 auto;font-family:'DM Sans',Arial,sans-serif;color:#1e293b;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;border-bottom:3px solid #b8945f;padding-bottom:18px;margin-bottom:20px;">
+          <div style="flex:1;">
+            ${c.company_logo ? `<img src="${c.company_logo}" style="width:48px;height:48px;object-fit:contain;margin-bottom:6px;" onerror="this.style.display='none'">` : ''}
+            <h2 style="font-size:18px;font-weight:700;margin:0;">${c.company_name || 'Our Company'}</h2>
+            <p style="font-size:10px;color:#64748b;margin:4px 0 0;white-space:pre-line;">${c.company_address || ''}</p>
+            ${c.company_phone ? `<p style="font-size:10px;color:#64748b;margin:2px 0 0;">Tel: ${c.company_phone}</p>`:''}
+            ${c.company_email ? `<p style="font-size:10px;color:#64748b;margin:2px 0 0;">${c.company_email}</p>`:''}
+            ${c.company_reg ? `<p style="font-size:10px;color:#64748b;margin:2px 0 0;">Reg: ${c.company_reg}</p>`:''}
+          </div>
+          <div style="text-align:right;">
+            <h1 style="font-size:32px;font-weight:700;color:#b45309;margin:0 0 6px;">QUOTATION</h1>
+            <p style="font-size:12px;font-family:monospace;color:#475569;margin:0;">${q.ref}</p>
+            <p style="font-size:12px;color:#64748b;margin:2px 0 0;">Date: ${dateStr}</p>
+          </div>
+        </div>
+        <div style="margin-bottom:18px;">
+          <p style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:600;margin:0 0 6px;">Prepared For</p>
+          <div style="border-left:4px solid #d4af7a;padding-left:12px;">
+            <p style="font-weight:600;margin:0;">${q.name}</p>
+            ${q.organization?`<p style="font-size:12px;color:#475569;margin:2px 0 0;">${q.organization}</p>`:''}
+            ${q.role?`<p style="font-size:12px;color:#64748b;margin:2px 0 0;">${q.role}</p>`:''}
+            ${q.address?`<p style="font-size:12px;color:#64748b;margin:2px 0 0;">${q.address}</p>`:''}
+            <p style="font-size:12px;color:#64748b;margin:2px 0 0;">${q.phone}</p>
+          </div>
+        </div>
+        <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:8px 12px;margin-bottom:16px;">
+          <p style="font-size:11px;color:#475569;margin:0;"><strong>Preferred Payment:</strong> ${payLabel}</p>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:18px;">
+          <thead><tr style="background:#fef3c7;border-bottom:2px solid #fcd34d;"><th style="text-align:left;padding:8px;">#</th><th style="text-align:left;padding:8px;">SKU</th><th style="text-align:left;padding:8px;">Description</th><th style="text-align:center;padding:8px;">Qty</th><th style="text-align:right;padding:8px;">Unit Price</th><th style="text-align:right;padding:8px;">Amount</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
+          <div style="width:240px;background:#f8fafc;padding:12px;border-radius:6px;border:1px solid #cbd5e1;">
+            <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;"><span>Total</span><span style="color:#b45309;">${formatCurrency(q.total)}</span></div>
+          </div>
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;margin-bottom:16px;">
+          <p style="font-size:10px;font-weight:600;color:#475569;margin:0 0 4px;">Terms</p>
+          <p style="font-size:10px;color:#64748b;margin:0;line-height:1.4;">This is a quotation based on your order request. Prices are subject to confirmation. We will contact you to finalize availability, payment, and delivery. No payment has been made.</p>
+        </div>
+        <p style="text-align:center;font-size:10px;color:#94a3b8;margin:0;">Thank you for your order! &middot; ${c.company_name || ''}</p>
+      </div>`;
+    const overlay = document.createElement('div');
+    overlay.id = 'quotationOverlay';
+    overlay.className = 'fixed inset-0 z-[160] flex flex-col p-4';
+    overlay.style.background = 'rgba(20,20,35,0.7)';
+    overlay.innerHTML = `
+      <div class="max-w-3xl w-full mx-auto bg-white rounded-xl shadow-2xl flex flex-col" style="max-height:92vh;">
+        <div class="flex items-center justify-between p-4 border-b flex-shrink-0">
+          <h3 class="font-bold text-slate-800">Your Quotation</h3>
+          <div class="flex gap-2">
+            <button onclick="downloadQuotationPDF()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"><i data-lucide="download" class="w-4 h-4"></i>Save PDF</button>
+            <button onclick="closeQuotation()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 w-9 h-9 rounded-lg flex items-center justify-center"><i data-lucide="x" class="w-5 h-5"></i></button>
+          </div>
+        </div>
+        <div class="overflow-y-auto p-4 bg-slate-100">${docHtml}</div>
+      </div>`;
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    lucide.createIcons();
+  }
+  function closeQuotation(){ const o = document.getElementById('quotationOverlay'); if (o) o.remove(); document.body.style.overflow=''; }
+  function downloadQuotationPDF(){
+    const el = document.getElementById('quotationDoc'); if (!el) return;
+    const w = window.open('', 'PDF', 'height=900,width=800');
+    if (!w){ showToast('Please allow pop-ups to save PDF','error'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Quotation ' + (window.lastQuotation?.ref||'') + '</title><style>@page{size:A4;margin:10mm;}body{margin:0;font-family:Arial,sans-serif;}table{width:100%;border-collapse:collapse;}</style></head><body>' + el.outerHTML + '</body></html>');
+    w.document.close(); w.focus();
+    setTimeout(()=>{ w.print(); }, 600);
   }
 
   /* ===== BOOT ===== */
