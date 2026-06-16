@@ -27,6 +27,10 @@
     .accent-line { background: linear-gradient(90deg,#b8945f,#d4af7a); }
     @keyframes shimmer { 0% { background-position:-450px 0; } 100% { background-position:450px 0; } }
     .skeleton { background:#e9e9ec; background-image:linear-gradient(90deg,#e9e9ec 0px,#f4f4f6 60px,#e9e9ec 120px); background-size:600px; animation: shimmer 1.4s infinite linear; }
+    @keyframes breathe { 0%,100% { transform:scale(1); box-shadow:0 8px 24px -6px rgba(184,148,95,0.5); } 50% { transform:scale(1.08); box-shadow:0 12px 32px -4px rgba(184,148,95,0.8); } }
+    .breathing { animation: breathe 1.6s ease-in-out infinite; }
+    @keyframes popUp { from { opacity:0; transform:translateY(10px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
+    .bubble-pop { animation: popUp 0.35s cubic-bezier(0.16,1,0.3,1); }
   </style>
  </head>
  <body class="min-h-full" style="background:#f6f5f2;">
@@ -110,9 +114,19 @@
   </div>
 
   <!-- FLOATING REQUEST AN ITEM -->
-  <button onclick="openRequestDialog()" class="fixed right-5 z-[110] flex items-center gap-2 text-white rounded-full pl-4 pr-5 py-3 font-semibold shadow-lg transition hover:scale-105" style="bottom:84px;background:linear-gradient(135deg,#b8945f,#d4af7a);">
+  <button id="requestFab" onclick="openRequestDialog()" class="fixed right-5 z-[110] flex items-center gap-2 text-white rounded-full pl-4 pr-5 py-3 font-semibold shadow-lg transition hover:scale-105" style="bottom:84px;background:linear-gradient(135deg,#b8945f,#d4af7a);">
     <i data-lucide="clipboard-list" class="w-5 h-5"></i><span class="hidden sm:inline">Request an Item</span>
   </button>
+
+  <!-- MOBILE "CAN'T FIND IT?" NUDGE -->
+  <div id="findNudge" class="hidden fixed right-5 z-[115]" style="bottom:148px;">
+    <div class="bubble-pop relative bg-white rounded-2xl shadow-xl border border-slate-100 p-3 pr-8 max-w-[230px] cursor-pointer" onclick="openRequestDialog();dismissNudge()">
+      <button onclick="event.stopPropagation();dismissNudge()" class="absolute top-1.5 right-1.5 text-slate-300 hover:text-slate-500"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+      <p class="text-sm font-semibold text-slate-800 leading-snug">Still can't find what you need?</p>
+      <p class="text-xs text-[#b8945f] font-semibold mt-0.5 flex items-center gap-1">Click here to request it <i data-lucide="arrow-down" class="w-3 h-3"></i></p>
+      <div class="absolute -bottom-1.5 right-7 w-3 h-3 bg-white border-r border-b border-slate-100 rotate-45"></div>
+    </div>
+  </div>
 
   <!-- REQUEST DIALOG -->
   <div id="requestModal" class="hidden fixed inset-0 z-[170] flex items-center justify-center p-4">
@@ -301,7 +315,14 @@
       ${body}`;
     lucide.createIcons();
   }
-  function updateCatSearch(v){ catSearch = v; renderCatalogue(); }
+  function updateCatSearch(v){
+    catSearch = v; renderCatalogue();
+    if (isMobileView() && v.trim().length >= 2){
+      const q = v.toLowerCase();
+      const matches = products.filter(p => p.name.toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q));
+      if (matches.length <= 2) showFindNudge();
+    }
+  }
   function updateCatSort(v){ catSort = v; renderCatalogue(); }
 
   function renderProductCard(p){
@@ -735,6 +756,34 @@
     w.document.close(); w.focus();
     setTimeout(()=>{ w.print(); }, 600);
   }
+
+  /* ===== "CAN'T FIND IT?" NUDGE (mobile only, once per visit) ===== */
+  let nudgeShown = false, nudgeDismissed = false;
+  function isMobileView(){ return window.matchMedia('(max-width: 639px)').matches; }
+  function showFindNudge(){
+    if (nudgeShown || nudgeDismissed || !isMobileView()) return;
+    if (document.getElementById('requestModal') && !document.getElementById('requestModal').classList.contains('hidden')) return;
+    nudgeShown = true;
+    const n = document.getElementById('findNudge');
+    n.classList.remove('hidden');
+    const fab = document.getElementById('requestFab');
+    if (fab) fab.classList.add('breathing');
+    lucide.createIcons();
+    // auto-hide the bubble after a while, but keep the breathing until they interact
+    setTimeout(()=>{ const el = document.getElementById('findNudge'); if (el && !nudgeDismissed) el.classList.add('hidden'); }, 8000);
+  }
+  function dismissNudge(){
+    nudgeDismissed = true;
+    const n = document.getElementById('findNudge'); if (n) n.classList.add('hidden');
+    const fab = document.getElementById('requestFab'); if (fab) fab.classList.remove('breathing');
+  }
+  // Trigger on scroll near bottom
+  window.addEventListener('scroll', () => {
+    if (nudgeShown || nudgeDismissed || !isMobileView()) return;
+    const scrollPos = window.innerHeight + window.scrollY;
+    const nearBottom = scrollPos >= document.body.offsetHeight - 250;
+    if (nearBottom) showFindNudge();
+  }, { passive:true });
 
   /* ===== BOOT ===== */
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape'){ closeProductModal(); closeCart(); closeRequestDialog(); } });
