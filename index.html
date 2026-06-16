@@ -31,6 +31,8 @@
     .breathing { animation: breathe 1.6s ease-in-out infinite; }
     @keyframes popUp { from { opacity:0; transform:translateY(10px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
     .bubble-pop { animation: popUp 0.35s cubic-bezier(0.16,1,0.3,1); }
+    .no-scrollbar::-webkit-scrollbar { display:none; }
+    .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
   </style>
  </head>
  <body class="min-h-full" style="background:#f6f5f2;">
@@ -329,9 +331,9 @@
           <option value="price_high" ${catSort==='price_high'?'selected':''}>Sort: Price (High–Low)</option>
         </select>
       </div>
-      <div class="mb-8 flex flex-wrap gap-2.5">
-        <button onclick="setCategory('all')" class="px-5 py-2 rounded-full font-semibold text-sm transition ${activeCategory==='all'?'text-white shadow-md':'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}" ${activeCategory==='all'?'style="background:linear-gradient(135deg,#1a1a2e,#16213e);"':''}>All Products <span class="opacity-60">(${products.length})</span></button>
-        ${categories.map(c => { const cnt = products.filter(p => (p.category||'Uncategorized')===c).length; return `<button onclick="setCategory('${c.replace(/'/g,"\\'")}')" class="px-5 py-2 rounded-full font-semibold text-sm transition ${activeCategory===c?'text-white shadow-md':'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}" ${activeCategory===c?'style="background:linear-gradient(135deg,#1a1a2e,#16213e);"':''}>${c} <span class="opacity-60">(${cnt})</span></button>`; }).join('')}
+      <div class="mb-8 flex flex-nowrap sm:flex-wrap gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
+        <button onclick="setCategory('all')" class="flex-shrink-0 px-4 py-1.5 rounded-full font-semibold text-sm transition whitespace-nowrap ${activeCategory==='all'?'text-white shadow-sm':'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}" ${activeCategory==='all'?'style="background:linear-gradient(135deg,#1a1a2e,#16213e);"':''}>All <span class="opacity-60">(${products.length})</span></button>
+        ${categories.map(c => { const cnt = products.filter(p => (p.category||'Uncategorized')===c).length; return `<button onclick="setCategory('${c.replace(/'/g,"\\'")}')" class="flex-shrink-0 px-4 py-1.5 rounded-full font-semibold text-sm transition whitespace-nowrap ${activeCategory===c?'text-white shadow-sm':'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}" ${activeCategory===c?'style="background:linear-gradient(135deg,#1a1a2e,#16213e);"':''}>${c} <span class="opacity-60">(${cnt})</span></button>`; }).join('')}
       </div>
       <p class="text-sm text-slate-500 mb-5">Showing <span class="font-semibold text-slate-700">${visible.length}</span> ${visible.length === 1 ? 'product' : 'products'}${catSearch?` for “${catSearch}”`:''}</p>
       ${body}`;
